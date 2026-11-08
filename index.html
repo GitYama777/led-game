@@ -1,0 +1,609 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<title>LEDゲーム</title>
+<style>
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
+html,body{margin:0;height:100%;font-family:sans-serif;touch-action:manipulation;overflow:hidden}
+html{background:#a3172a}
+:fullscreen::backdrop{background:#a3172a}
+body{display:flex;flex-direction:column;position:fixed;left:0;right:0;top:0;bottom:0;height:auto}
+#pl1{padding-bottom:calc(6px + env(safe-area-inset-bottom))}
+.pl{flex:1;display:flex;gap:6px;padding:6px;position:relative;overflow:hidden}
+.deco{position:absolute;left:0;top:0;right:0;bottom:0;display:none;align-items:center;justify-content:center;gap:2vmin;font-size:12vmin;pointer-events:none;overflow:hidden}
+.xmas .deco{display:flex}
+.xmas #pl2{background:linear-gradient(#0f1a48,#2a3b78 80%)}
+.xmas #pl1{background:#a3172a;flex:2}
+.xmas #pl2{flex:4}
+#pl2 .deco{transform:rotate(180deg)}
+.deco span{display:inline-block;animation:sway 1.6s ease-in-out infinite alternate}
+.lt{animation:twk 1.2s steps(1) infinite}
+@keyframes twk{0%{opacity:1}50%{opacity:.12}}
+.deco i{z-index:5;position:absolute;top:-6vmin;font-style:normal;font-size:4vmin;color:#fff;animation:fall linear infinite}
+@keyframes sway{from{transform:translateY(-1.5vmin) rotate(-8deg)}to{transform:translateY(1.5vmin) rotate(8deg)}}
+@keyframes fall{to{transform:translateY(70vh) rotate(360deg)}}
+.gift{position:absolute;width:7vmin;height:6vmin;line-height:6vmin;text-align:center;font-size:3.8vmin;font-weight:bold;color:#fff;background:linear-gradient(135deg,#ff4f9a,#6f5cff);border-radius:1vmin;border:.4vmin solid #ffe066;box-sizing:border-box;line-height:5.2vmin}
+.gift:before{content:'';position:absolute;left:50%;top:-1.8vmin;width:3.6vmin;height:1.8vmin;margin-left:-1.8vmin;background:#ffe066;border-radius:50% 50% 0 0}
+.hs{position:absolute;left:0;right:0;top:0;bottom:0}
+.hs svg{position:absolute;left:0;bottom:0;width:100%;height:auto}
+.win{animation:glow 3s ease-in-out infinite alternate}
+.star{animation:glow 2s ease-in-out infinite alternate}
+.smk{animation:smoke 4s linear infinite}
+@keyframes glow{from{opacity:1}to{opacity:.7}}
+@keyframes smoke{from{transform:translateY(0);opacity:.8}to{transform:translateY(-22px);opacity:0}}
+.sl{position:absolute;left:50%;top:26%;white-space:nowrap;font-size:9vmin;line-height:1;will-change:transform}
+.deco .sl span{animation:none}
+.deco .sl span.p{animation:bob .9s ease-in-out infinite alternate}
+.deco span.nt{font-size:14vmin;font-weight:bold;line-height:1;animation:none}
+@keyframes bob{from{transform:translateY(-.7vmin)}to{transform:translateY(.7vmin)}}
+#pl2{transform:rotate(180deg);background:#0b2a80}
+#pl1{background:#7a0e0e}
+.k{flex:1;border:0;border-radius:14px;color:#fff;font-size:7vmin;font-weight:bold;touch-action:none}
+.k.c{flex:2}
+#pl1 .k{background:#e61e1e}
+#pl2 .k{background:#1e62ff}
+.k:active{filter:brightness(1.5)}
+.k.h{visibility:hidden}
+#mid{background:#fff;padding:6px;text-align:center}
+#msg{font-size:5vmin;font-weight:bold;margin:2px 0;min-height:7vmin}
+#sc{font-size:6vmin;font-weight:bold}
+#msg:empty{display:none}
+#menu{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:1fr;gap:6px;margin:6px 0}
+#menu button{font-size:6.5vmin;line-height:1.2;white-space:pre-line;padding:12px 4px;border-radius:12px;border:2px solid #888;background:#eee;font-weight:bold}
+#menu button.on{background:#ffcc00;border-color:#c90}
+#vm{display:none;width:72vmin;height:72vmin;margin:4px auto;border-radius:2vmin;background:#000}
+#sz{margin:12px 0}
+#sz button{font-size:9vmin;padding:16px 20px;margin:0 8px;border-radius:14px;border:3px solid #888;background:#eee;font-weight:bold}
+#sz button.on{background:#9fd8ff;border-color:#39c}@keyframes blink{50%{opacity:.3}}
+#go{font-size:13vmin;padding:10px 40px;margin:6px 0;border-radius:24px;border:0;background:#2aa84a;color:#fff;font-weight:bold;animation:blink 1s infinite}
+#qt{font-size:3.5vmin;padding:4px 14px;border-radius:14px;border:1px solid #888;background:#eee}
+</style></head><body>
+<div class="pl" id="pl2"><button class="k" id="k20"></button><button class="k c" id="k21"></button><button class="k" id="k22"></button></div>
+<div id="mid">
+  <div id="msg">…</div>
+  <div id="sc"></div>
+  <canvas id="vm" width="320" height="320"></canvas>
+  <div id="menu"></div>
+  <div id="sz"><button id="w8">8×8</button><button id="w10">10×10</button><button id="w0" style="margin-top:10px">LEDなし</button></div>
+  <button id="go">スタート</button><button id="qt">やめる</button>
+</div>
+<div class="pl" id="pl1"><button class="k" id="k10"></button><button class="k c" id="k11"></button><button class="k" id="k12"></button></div>
+<script>
+// ESP32なし版のゲームエンジン。esp32_game6.ino のゲーム処理をJavaScriptに移したもの。
+// 画面(ページ)はESP32版と同じものを使い、ESP32への通信だけをここで受け止める。
+(function () {
+  var W = 8, NUM = W * W, ECOLS = W - 2, UNITS = 32;
+  var MENU = 0, COUNT = 1, PLAY = 2, END = 3;
+  var mode = MENU, g = 0, tMode = 0, sc = [0, 0, 0], winner = 0, msg = '', lab = ['', '', ''];
+  var px = [];
+  function clearAll() { px = []; for (var i = 0; i < NUM * 3; i++) px.push(0); }
+  clearAll();
+  function ms() { return Date.now() - T0; }
+  var T0 = Date.now();
+  function rnd(a, b) { return b === undefined ? Math.floor(Math.random() * a) : a + Math.floor(Math.random() * (b - a)); }
+  function setPx(c, r, R, G, B) {
+    if (c < 0 || c >= W || r < 0 || r >= W) return;
+    var i = (r * W + c) * 3; px[i] = R; px[i + 1] = G; px[i + 2] = B;
+  }
+  function fillAll(R, G, B) { for (var c = 0; c < W; c++) for (var r = 0; r < W; r++) setPx(c, r, R, G, B); }
+  function setP(c, r, p, dim) { if (dim === undefined) dim = 255; if (p === 1) setPx(c, r, dim, 0, 0); else setPx(c, r, 0, 0, dim); }
+  function ring(p) {
+    for (var i = 0; i < W; i++) {
+      if (p) { setP(i, 0, p); setP(i, W - 1, p); setP(0, i, p); setP(W - 1, i, p); }
+      else { setPx(i, 0, 255, 255, 255); setPx(i, W - 1, 255, 255, 255); setPx(0, i, 255, 255, 255); setPx(W - 1, i, 255, 255, 255); }
+    }
+  }
+  function endGame(w) {
+    winner = w; mode = END; tMode = ms();
+    msg = w === 0 ? 'ひきわけ!' : (w === 1 ? 'あかの かち!' : 'あおの かち!');
+    lab = ['', '', ''];
+  }
+  function winByScore() { return sc[1] > sc[2] ? 1 : (sc[2] > sc[1] ? 2 : 0); }
+
+  // 0 れんだで たいけつ
+  var tpos;
+  var tug = {
+    init: function () { tpos = 16; msg = 'れんだ! れんだ!'; lab = ['', 'ポン!', '']; },
+    input: function (p, b) {
+      if (b !== 1) return;
+      if (p === 1) tpos++; else tpos--;
+      if (tpos >= UNITS) endGame(1); else if (tpos <= 0) endGame(2);
+    },
+    tick: function () {},
+    render: function () {
+      var bc = Math.floor(tpos * W / UNITS);
+      for (var c = 0; c < W; c++) for (var r = 0; r < W; r++) {
+        if (c < bc) setP(c, r, 1); else if (c > bc) setP(c, r, 2); else setPx(c, r, 255, 255, 255);
+      }
+    }
+  };
+
+  // 1 ぴったり ストップ
+  var sround, sx = [0, 0, 0], sdone = [0, 0, 0], ssub, sw, sStart, sTsub;
+  function dotX(now) { var span = 2 * (W - 1), m = Math.floor((now - sStart) / (150 - sround * 35)) % span; return m < W ? m : span - m; }
+  function stopDist(x) { return x <= W / 2 - 1 ? W / 2 - 1 - x : x - W / 2; }
+  function stopNewRound() { sdone = [0, 0, 0]; ssub = 0; sStart = ms(); sw = 0; msg = 'ラウンド ' + (sround + 1) + ' / 3  まんなかで ストップ!'; }
+  var stop = {
+    init: function () { sround = 0; lab = ['', 'ストップ!', '']; stopNewRound(); },
+    input: function (p, b) {
+      if (b !== 1 || ssub !== 0 || sdone[p]) return;
+      sdone[p] = 1; sx[p] = dotX(ms());
+      if (sdone[1] && sdone[2]) {
+        var d1 = stopDist(sx[1]), d2 = stopDist(sx[2]);
+        sw = d1 < d2 ? 1 : (d2 < d1 ? 2 : 0);
+        if (sw) sc[sw]++;
+        ssub = 1; sTsub = ms();
+        msg = sw === 0 ? 'どうてん!' : (sw === 1 ? 'あかが ちかい!' : 'あおが ちかい!');
+      }
+    },
+    tick: function () {
+      if (ssub === 1 && ms() - sTsub > 1800) {
+        sround++;
+        if (sround >= 3) endGame(winByScore()); else stopNewRound();
+      }
+    },
+    render: function () {
+      var now = ms(), c, i;
+      for (c = 0; c < W; c++) { setP(c, W - 1, 1, 25); setP(c, 0, 2, 25); }
+      for (i = 0; i < sc[1]; i++) setP(i, W / 2 - 1, 1);
+      for (i = 0; i < sc[2]; i++) setP(i, W / 2, 2);
+      setPx(W / 2 - 1, W - 2, 255, 200, 0); setPx(W / 2, W - 2, 255, 200, 0);
+      setPx(W / 2 - 1, 1, 255, 200, 0); setPx(W / 2, 1, 255, 200, 0);
+      var blink = Math.floor(now / 150) % 2;
+      for (var p = 1; p <= 2; p++) {
+        var row = p === 1 ? W - 3 : 2, x = sdone[p] ? sx[p] : dotX(now);
+        if (sdone[p]) {
+          if (ssub === 1 && sw === p && blink) setPx(x, row, 255, 255, 0); else setPx(x, row, 255, 255, 255);
+        } else setP(x, row, p);
+      }
+    }
+  };
+
+  // 2 クイズあて / 3 どっちが おおい?
+  var qn, qtype, qans, qwin, qsub, qcol, qsh, qlock = [0, 0, 0], qT, dots = [];
+  var COLN = ['あか', 'あお', 'きいろ', 'みどり', 'しろ'];
+  var COLV = [[255, 0, 0], [0, 0, 255], [255, 200, 0], [0, 255, 0], [255, 255, 255]];
+  var SHN = ['ハート', 'ほし', 'しかく', 'さんかく', 'まる'];
+  var SHB = [[0x66, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C, 0x18, 0x00], [0x18, 0x18, 0x7E, 0xFF, 0x7E, 0x3C, 0x66, 0x42],
+    [0x00, 0x7E, 0x7E, 0x7E, 0x7E, 0x7E, 0x7E, 0x00], [0x18, 0x18, 0x3C, 0x3C, 0x7E, 0x7E, 0xFF, 0xFF],
+    [0x3C, 0x7E, 0xFF, 0xFF, 0xFF, 0xFF, 0x7E, 0x3C]];
+  function clearDots() { dots = []; for (var i = 0; i < NUM; i++) dots.push(false); }
+  function quizNew() {
+    qtype = rnd(3); qsub = 0; qlock = [0, 0, 0]; qwin = 0; qT = ms();
+    var K = qtype === 1 ? 9 : 5, off = qtype === 1 ? 1 : 0, cor = qtype === 1 ? rnd(1, 9) : rnd(5);
+    var v = [cor, 0, 0], i, j;
+    for (i = 1; i < 3; i++) { var dup; do { v[i] = off + rnd(K); dup = false; for (j = 0; j < i; j++) if (v[j] === v[i]) dup = true; } while (dup); }
+    qans = rnd(3);
+    var t = v[0]; v[0] = v[qans]; v[qans] = t;
+    for (i = 0; i < 3; i++) lab[i] = qtype === 0 ? COLN[v[i]] : (qtype === 2 ? SHN[v[i]] : v[i] + ' こ');
+    if (qtype === 0) { qcol = cor; msg = 'もんだい ' + (qn + 1) + ': なにいろ？'; }
+    else if (qtype === 1) {
+      clearDots();
+      for (var n = 0; n < cor;) { var c = rnd(NUM); if (!dots[c]) { dots[c] = true; n++; } }
+      msg = 'もんだい ' + (qn + 1) + ': いくつ あるかな？';
+    } else { qsh = cor; msg = 'もんだい ' + (qn + 1) + ': なんの かたち？'; }
+  }
+  var quiz = {
+    init: function () { qn = 0; quizNew(); },
+    input: function (p, b) {
+      if (qsub !== 0 || qlock[p]) return;
+      if (b === qans) { sc[p]++; qwin = p; qsub = 1; qT = ms(); msg = 'せいかい! こたえは ' + lab[qans]; }
+      else {
+        qlock[p] = 1;
+        if (qlock[1] && qlock[2]) { qsub = 1; qT = ms(); qwin = 0; msg = 'ざんねん… こたえは ' + lab[qans]; }
+      }
+    },
+    tick: function () { if (qsub === 1 && ms() - qT > 1800) { qn++; if (qn >= 5) endGame(winByScore()); else quizNew(); } },
+    render: function () {
+      var i, r, c;
+      if (qtype === 0) fillAll(COLV[qcol][0], COLV[qcol][1], COLV[qcol][2]);
+      else if (qtype === 1) { for (i = 0; i < NUM; i++) if (dots[i]) setPx(i % W, Math.floor(i / W), 255, 200, 0); }
+      else { for (r = 0; r < 8; r++) for (c = 0; c < 8; c++) if (SHB[qsh][r] & (0x80 >> c)) setPx(c, r, 255, 80, 160); }
+      if (qsub === 1 && Math.floor(ms() / 150) % 2) ring(qwin);
+    }
+  };
+  function moreNew() {
+    qsub = 0; qlock = [0, 0, 0]; qwin = 0; qT = ms();
+    var small = rnd(2, 13), big = small + rnd(1, 4), leftBig = rnd(2) === 1;
+    var mL = leftBig ? big : small, mR = leftBig ? small : big, n, c, r;
+    qans = leftBig ? 0 : 2;
+    clearDots();
+    for (n = 0; n < mL;) { c = rnd(W / 2); r = rnd(W); if (!dots[r * W + c]) { dots[r * W + c] = true; n++; } }
+    for (n = 0; n < mR;) { c = W / 2 + rnd(W / 2); r = rnd(W); if (!dots[r * W + c]) { dots[r * W + c] = true; n++; } }
+    lab = ['あか', '', 'あお'];
+    msg = 'だい ' + (qn + 1) + ' もん: どっちが おおい？';
+  }
+  var more = {
+    init: function () { qn = 0; moreNew(); },
+    input: function (p, b) {
+      if (b === 1 || qsub !== 0 || qlock[p]) return;
+      if (b === qans) { sc[p]++; qwin = p; qsub = 1; qT = ms(); msg = 'せいかい!'; }
+      else {
+        qlock[p] = 1;
+        if (qlock[1] && qlock[2]) { qsub = 1; qT = ms(); qwin = 0; msg = 'ざんねん…'; }
+      }
+    },
+    tick: function () { if (qsub === 1 && ms() - qT > 1500) { qn++; if (qn >= 7) endGame(winByScore()); else moreNew(); } },
+    render: function () {
+      var blink = Math.floor(ms() / 150) % 2, i, r;
+      for (i = 0; i < NUM; i++) if (dots[i]) {
+        var c = i % W, row = Math.floor(i / W), side = c < W / 2 ? 0 : 2;
+        if (qsub === 1 && side === qans && blink) setPx(c, row, 255, 255, 255);
+        else if (c < W / 2) setP(c, row, 1); else setP(c, row, 2);
+      }
+      if (qsub === 1 && qwin) { for (r = 0; r < W; r++) { setP(W / 2 - 1, r, qwin, 40); setP(W / 2, r, qwin, 40); } }
+    }
+  };
+
+  // 4 ピンポン
+  var pp = [0, 0, 0], bx, by, bdx, bdy, rally, tBall, tServe;
+  function pongServe(loser) {
+    bx = W / 2 - 1 + rnd(2); by = W / 2 - 1 + rnd(2);
+    bdx = rnd(2) ? 1 : -1; bdy = loser === 1 ? 1 : -1;
+    rally = 0; tServe = ms() + 900; tBall = tServe;
+  }
+  function pongScore(w) { sc[w]++; if (sc[w] >= 3) endGame(w); else pongServe(w === 1 ? 2 : 1); }
+  function pongEdge(p, nx) { if (nx === pp[p]) bdx = -1; else if (nx === pp[p] + 2) bdx = 1; }
+  var pong = {
+    init: function () { pp = [0, (W - 3) >> 1, (W - 3) >> 1]; lab = ['◀', '', '▶']; msg = 'さきに 3てん!'; pongServe(rnd(1, 3)); },
+    input: function (p, b) { if (b === 0 && pp[p] > 0) pp[p]--; else if (b === 2 && pp[p] < W - 3) pp[p]++; },
+    tick: function () {
+      var now = ms();
+      if (now < tServe) return;
+      var interval = Math.max(110, 300 - rally * 14);
+      if (now - tBall < interval) return;
+      tBall = now;
+      var nx = bx + bdx; if (nx < 0 || nx > W - 1) { bdx = -bdx; nx = bx + bdx; }
+      var ny = by + bdy;
+      if (ny <= 0) {
+        if (nx >= pp[2] && nx <= pp[2] + 2) { bdy = 1; ny = by + 1; rally++; pongEdge(2, nx); } else { pongScore(1); return; }
+      } else if (ny >= W - 1) {
+        if (nx >= pp[1] && nx <= pp[1] + 2) { bdy = -1; ny = by - 1; rally++; pongEdge(1, nx); } else { pongScore(2); return; }
+      }
+      bx = nx; by = ny;
+    },
+    render: function () {
+      var i;
+      for (i = 0; i < 3; i++) { setP(pp[1] + i, W - 1, 1); setP(pp[2] + i, 0, 2); }
+      for (i = 0; i < sc[1]; i++) setP(0, W - 2 - i, 1, 60);
+      for (i = 0; i < sc[2]; i++) setP(W - 1, 1 + i, 2, 60);
+      if (ms() >= tServe || Math.floor(ms() / 120) % 2) setPx(bx, by, 255, 255, 255);
+    }
+  };
+
+  // 5 インベーダー
+  var cx = [0, 0, 0], bulX = [0, 0, 0], bulY = [0, -1, -1], ex, ey, edir, killed, alive, tEn, tBul, tShot = [0, 0, 0];
+  function invHit(p) {
+    if (bulY[p] < 0) return;
+    var r = bulY[p] - ey, c = bulX[p] - ex;
+    if (r >= 0 && r < 3 && c >= 0 && c < ECOLS && alive[r][c]) {
+      alive[r][c] = false; bulY[p] = -1; sc[p]++; killed++;
+      if (killed >= 3 * ECOLS) endGame(winByScore());
+    }
+  }
+  var inv = {
+    init: function () {
+      cx = [0, W - 3, 2]; bulY = [0, -1, -1]; ex = 1; ey = 0; edir = 1; killed = 0; alive = [];
+      for (var r = 0; r < 3; r++) { alive.push([]); for (var c = 0; c < ECOLS; c++) alive[r].push(true); }
+      tEn = tBul = ms() + 600;
+      lab = ['◀', 'うつ!', '▶']; msg = 'たくさん たおした ほうが かち!';
+    },
+    input: function (p, b) {
+      if (b === 0 && cx[p] > 0) cx[p]--;
+      else if (b === 2 && cx[p] < W - 1) cx[p]++;
+      else if (b === 1 && bulY[p] < 0 && ms() - tShot[p] > 250) { bulX[p] = cx[p]; bulY[p] = W - 2; tShot[p] = ms(); invHit(p); }
+    },
+    tick: function () {
+      var now = ms(), p;
+      if (now >= tBul) {
+        tBul = now + 80;
+        for (p = 1; p <= 2; p++) if (bulY[p] >= 0) { bulY[p]--; invHit(p); }
+      }
+      if (mode !== PLAY) return;
+      if (now >= tEn) {
+        tEn = now + Math.max(160, 650 - killed * 22);
+        if ((edir > 0 && ex + ECOLS - 1 >= W - 1) || (edir < 0 && ex <= 0)) { edir = -edir; ey++; } else ex += edir;
+        for (var r = 0; r < 3; r++) for (var c = 0; c < ECOLS; c++) if (alive[r][c] && ey + r >= W - 1) { endGame(winByScore()); msg = 'インベーダーが きた! ' + msg; return; }
+        invHit(1); invHit(2);
+      }
+    },
+    render: function () {
+      var a = Math.floor(ms() / 400) % 2, r, c, p;
+      for (r = 0; r < 3; r++) for (c = 0; c < ECOLS; c++) if (alive[r][c]) {
+        if (r === 0) setPx(ex + c, ey + r, 255, a ? 60 : 0, a ? 255 : 120);
+        else if (r === 1) setPx(ex + c, ey + r, 0, 255, a ? 0 : 120);
+        else setPx(ex + c, ey + r, a ? 255 : 200, 200, 0);
+      }
+      for (p = 1; p <= 2; p++) {
+        setP(cx[p], W - 1, p);
+        if (cx[p] > 0) setP(cx[p] - 1, W - 1, p, 60);
+        if (cx[p] < W - 1) setP(cx[p] + 1, W - 1, p, 60);
+        if (bulY[p] >= 0) setPx(bulX[p], bulY[p], p === 1 ? 255 : 150, 150, p === 1 ? 150 : 255);
+      }
+    }
+  };
+
+  var GAMES = [tug, stop, quiz, more, pong, inv];
+
+  // カウントダウンの数字(3赤 2黄 1緑 0白)
+  var DIGIT = [[6, 9, 9, 9, 9, 6], [2, 6, 2, 2, 2, 7], [6, 9, 1, 2, 4, 15], [6, 9, 2, 1, 9, 6]];
+  var CDCOL = [[255, 255, 255], [0, 255, 0], [255, 200, 0], [255, 0, 0]];
+  function drawDigit(n) {
+    for (var r = 0; r < 6; r++) for (var c = 0; c < 4; c++)
+      if (DIGIT[n][r] & (8 >> c)) setPx(2 + c, 1 + r, CDCOL[n][0], CDCOL[n][1], CDCOL[n][2]);
+  }
+  function periPx(i, R, G, B) {
+    var s = W - 1;
+    if (i < s) setPx(i, 0, R, G, B);
+    else if (i < 2 * s) setPx(s, i - s, R, G, B);
+    else if (i < 3 * s) setPx(s - (i - 2 * s), s, R, G, B);
+    else setPx(0, s - (i - 3 * s), R, G, B);
+  }
+  function render() {
+    var now = ms();
+    clearAll();
+    if (mode === COUNT) {
+      var el = now - tMode, n = Math.max(1, 3 - Math.floor(el / 1000));
+      drawDigit(n);
+      var peri = 4 * (W - 1), lit = peri - Math.floor((el % 1000) * peri / 1000);
+      for (var i = peri - lit; i < peri; i++) periPx(i, CDCOL[n][0] >> 1, CDCOL[n][1] >> 1, CDCOL[n][2] >> 1);
+    } else if (mode === PLAY && now - tMode < 300) {
+      drawDigit(0); ring(0);
+    } else if (mode === PLAY) {
+      GAMES[g].render();
+    }
+  }
+
+  // ページへマス目を渡す(ESP32版の通信と同じ形。1マス16進3文字)
+  var stream = null, HEX = '0123456789abcdef';
+  window.EventSource = function () { stream = this; };
+  function sendFrame() {
+    if (!stream || !stream.onmessage) return;
+    var s = W + ':';
+    for (var i = 0; i < NUM * 3; i++) s += HEX[px[i] >> 4];
+    stream.onmessage({ data: s });
+  }
+
+  // ページからの通信(ESP32版と同じ呼び方)をここで受ける
+  function route(url) {
+    var q = url.split('?'), path = q[0], a = {};
+    (q[1] || '').split('&').forEach(function (kv) { var e = kv.split('='); a[e[0]] = e[1]; });
+    if (path === '/t') {
+      if (mode === PLAY) {
+        var p = parseInt(a.p, 10), b = parseInt(a.b, 10);
+        if ((p === 1 || p === 2) && b >= 0 && b <= 2) GAMES[g].input(p, b);
+      }
+    } else if (path === '/start') {
+      if (mode === MENU || mode === END) {
+        sc = [0, 0, 0]; winner = 0; GAMES[g].init();
+        playMsg = msg;  // ゲームの最初の文(問題文など)は、カウントダウンのあとに出す
+        mode = COUNT; tMode = ms(); msg = 'よういー…';
+      }
+    } else if (path === '/g') {
+      var n = parseInt(a.n, 10);
+      if ((mode === MENU || mode === END) && n >= 0 && n < 6) { g = n; mode = MENU; msg = ''; lab = ['', '', '']; }
+    } else if (path === '/menu') {
+      mode = MENU; msg = 'ゲームを えらんでね'; lab = ['', '', ''];
+    } else if (path === '/s') {
+      return {
+        m: mode, c: mode === COUNT ? Math.max(0, 3000 - (ms() - tMode)) : 0, w: W, v: 1, g: g,
+        s1: sc[1], s2: sc[2], msg: msg, l: lab.slice()
+      };
+    }
+    return 'ok';
+  }
+  window.fetch = function (url) {
+    var v = route(url);
+    return Promise.resolve({ json: function () { return Promise.resolve(v); }, text: function () { return Promise.resolve(String(v)); } });
+  };
+
+  var lastDraw = 0, playMsg = '';
+  setInterval(function () {
+    var now = ms();
+    if (mode === COUNT && now - tMode >= 3000) { mode = PLAY; tMode = now; msg = playMsg; }
+    if (mode === PLAY) GAMES[g].tick();
+    if (now - lastDraw >= 33) {
+      lastDraw = now;
+      if (mode === COUNT || mode === PLAY) { render(); sendFrame(); }
+    }
+  }, 10);
+})();
+</script>
+<script>
+var G=["れんだで\nたいけつ","ぴったり\nストップ","クイズあて","どっちが\nおおい？","ピンポン","インベーダー"];
+var S={m:0,g:0};
+// カウントダウン音。スマホは画面に触れるまで音を出せないので、最初のタッチで準備する
+var AC=null,cdOn=false;
+function unlock(){try{if(!AC){var C=window.AudioContext||window.webkitAudioContext;AC=new C();}
+  if(AC.state=='suspended')AC.resume();}catch(e){}}
+['pointerdown','pointerup','touchend','click'].forEach(function(n){document.addEventListener(n,unlock,true)});
+// 最初に画面に触れたときに全画面にする(対応しているブラウザだけ。iPhoneのSafariは非対応)
+function goFS(){var d=document.documentElement,f=d.requestFullscreen||d.webkitRequestFullscreen;
+  if(f&&!document.fullscreenElement&&!document.webkitFullscreenElement){try{var p=f.call(d);if(p&&p.catch)p.catch(function(){});}catch(e){}}}
+document.addEventListener('click',goFS,true);
+function beep(f,d){if(!AC)return;var t=AC.currentTime,o=AC.createOscillator(),v=AC.createGain();
+  o.type='square';o.frequency.value=f;v.gain.setValueAtTime(0.25,t);v.gain.exponentialRampToValueAtTime(0.001,t+d);
+  o.connect(v);v.connect(AC.destination);o.start(t);o.stop(t+d);}
+// 待ち時間の曲「ジングルベル」(童謡・著作権切れ)。[周波数Hz,拍] 0は休み
+var M=[[659,1],[659,1],[659,2],[659,1],[659,1],[659,2],[659,1],[784,1],[523,1.5],[587,.5],[659,4],
+[698,1],[698,1],[698,1.5],[698,.5],[698,1],[659,1],[659,1],[659,.5],[659,.5],[659,1],[587,1],[587,1],[659,1],[587,2],[784,2],
+[659,1],[659,1],[659,2],[659,1],[659,1],[659,2],[659,1],[784,1],[523,1.5],[587,.5],[659,4],
+[698,1],[698,1],[698,1.5],[698,.5],[698,1],[659,1],[659,1],[659,.5],[659,.5],[784,1],[784,1],[698,1],[587,1],[523,4],[0,2]];
+var mOn=false,mI=0,mT=null;
+// ハンドベルの音。[周波数の倍率,音量,響く秒数]を重ねる
+//  基音と、少しずらした基音(うなりでキラキラする)、ハンドベル特有の3倍音は長く響く。
+//  整数倍でない高い音は、カーンと打った瞬間だけ鳴って消える。
+function tone(f,d,t){var ring=1.8+d;
+  [[1,0.05,ring],[1.0025,0.025,ring],[3,0.028,ring*0.55],[4.2,0.01,0.6],[5.4,0.008,0.25],[8.1,0.005,0.06]].forEach(function(p){
+    var o=AC.createOscillator(),v=AC.createGain();
+    o.type='sine';o.frequency.value=f*p[0];
+    v.gain.setValueAtTime(0.0001,t);v.gain.exponentialRampToValueAtTime(p[1],t+0.003);
+    v.gain.exponentialRampToValueAtTime(0.0001,t+p[2]);
+    o.connect(v);v.connect(AC.destination);o.start(t);o.stop(t+p[2]);});}
+// 音は少し先の時刻を予約して鳴らす(画面の処理で曲のテンポが乱れない)。
+// 音符は、その音がスピーカーから出る時刻に合わせてはねさせる。
+var mNext=0;
+function mTick(){mT=null;if(!mOn)return;
+  if(!AC||AC.state!='running'){mNext=0;mT=setTimeout(mTick,400);return;}  // 画面に触れるまで待つ
+  if(mNext<AC.currentTime)mNext=AC.currentTime+0.05;
+  var lat=AC.outputLatency||AC.baseLatency||0;
+  while(mNext<AC.currentTime+0.2){var n=M[mI];mI=(mI+1)%M.length;
+    if(n[0]){tone(n[0],n[1]*0.26,mNext);
+      (function(m,w){setTimeout(function(){hit(m);},w);})(n,(mNext-AC.currentTime+lat)*1000);}
+    mNext+=n[1]*0.28;}
+  mT=setTimeout(mTick,50);}
+// 鳴った音に合わせて音符をはねさせる(音の高さで場所が決まる。長い音は全員)
+var NT=[];
+function hit(n){var i=[523,587,659,698,784].indexOf(n[0]),L=[0,2,3,5,6];
+  // 音が出た瞬間にいちばん高い位置へ飛び、そこから落ちてくる
+  function jump(e,h){if(e&&e.animate)e.animate([
+    {transform:'translateY(-'+h+'vmin) rotate('+(i%2?22:-22)+'deg) scale(1.4)'},{transform:'none'}],
+    {duration:Math.max(260,n[1]*280),easing:'ease-out'});}
+  if(n[1]>=2)NT.forEach(function(e){jump(e,4);});else jump(NT[L[i]],6);}
+function music(on){if(on&&!mOn){mOn=true;mI=0;mNext=0;if(!mT)mTick();}else if(!on)mOn=false;}
+function countdown(c){[3,2,1,0].forEach(function(n){var w=c-n*1000;if(w<-300)return;
+  setTimeout(function(){if(n==0)beep(1320,0.5);else beep(660,0.15);},Math.max(w,0));});}
+// 青の操作盤は180度回転しているので、左右の命令を入れ替えて、画面上の左右をLEDの左右にそろえる
+function tap(p,b){if(p==2&&S.g>=3&&b!=1)b=2-b;fetch('/t?p='+p+'&b='+b).catch(function(){})}
+function bind(p,b){var e=document.getElementById('k'+p+b),t=null;
+  e.addEventListener('pointerdown',function(ev){ev.preventDefault();tap(p,b);
+    if(S.g>=4&&b!=1){clearInterval(t);t=setInterval(function(){tap(p,b)},130);}});
+  ['pointerup','pointercancel','pointerleave'].forEach(function(n){e.addEventListener(n,function(){clearInterval(t)})});
+  e.addEventListener('contextmenu',function(ev){ev.preventDefault()});}
+for(var p=1;p<=2;p++)for(var b=0;b<3;b++)bind(p,b);
+var mn=document.getElementById('menu');
+G.forEach(function(n,i){var x=document.createElement('button');x.textContent=(i+1)+'. '+n;x.id='g'+i;if(i==5)x.style.fontSize='5.4vmin';
+  x.onclick=function(){fetch('/g?n='+i)};mn.appendChild(x)});
+// クリスマスの飾り(スタート画面の上下の余白)
+// 雪の夜の村をSVGで描く
+function village(){
+  function tree(x,b,s){var c='#17402f',w='#f4f8ff';
+    return '<rect x="'+(x-1.5*s)+'" y="'+(b-6*s)+'" width="'+(3*s)+'" height="'+(6*s)+'" fill="#3a2a20"/>'+
+      [[0,12],[8,10],[15,7]].map(function(t){var y=b-5*s-t[0]*s,h=12*s,hw=t[1]*s;
+        return '<polygon points="'+(x-hw)+','+y+' '+x+','+(y-h)+' '+(x+hw)+','+y+'" fill="'+c+'"/>'+
+          '<polygon points="'+(x-hw*0.45)+','+(y-h*0.55)+' '+x+','+(y-h)+' '+(x+hw*0.45)+','+(y-h*0.55)+'" fill="'+w+'"/>';}).join('');}
+  function win(x,y,w,h){return '<rect class="win" x="'+x+'" y="'+y+'" width="'+w+'" height="'+h+'" fill="url(#wg)" stroke="#3b2a1e" stroke-width=".7"/>'+
+    '<path d="M'+(x+w/2)+' '+y+'v'+h+'M'+x+' '+(y+h/2)+'h'+w+'" stroke="#3b2a1e" stroke-width=".5"/>';}
+  // イルミネーション: 2点の間に色とりどりの電球を並べる(順番にずらして点滅)
+  var LC=['#ff3b3b','#ffe14d','#3bff6e','#4db8ff','#ff5fd2'],LN=0;
+  function lights(x1,y1,x2,y2,n){var s='';for(var i=0;i<n;i++){var k=n>1?i/(n-1):0,px=x1+(x2-x1)*k,py=y1+(y2-y1)*k,c=LC[LN%5];
+      s+='<g class="lt" style="animation-delay:'+(-(LN%4)*0.3)+'s"><circle cx="'+px+'" cy="'+py+'" r="2.3" fill="'+c+'" opacity=".35"/><circle cx="'+px+'" cy="'+py+'" r="1.05" fill="'+c+'"/></g>';LN++;}
+    return s;}
+  function house(x,b,w,h,col,roof,sm){var t=b-h,rh=h*0.7,d=w*0.42,u=7,mx=x+w/2;
+    return '<rect x="'+(x+w+d*0.45)+'" y="'+(t-rh*0.85-u)+'" width="6" height="'+(rh*0.7)+'" fill="#5a3a30"/>'+
+      '<rect x="'+(x+w+d*0.45-1)+'" y="'+(t-rh*0.85-u-2)+'" width="8" height="3" fill="#f4f8ff"/>'+
+      (sm?'<g class="smk" style="animation-delay:'+sm+'s"><circle cx="'+(x+w+d*0.45+3)+'" cy="'+(t-rh*0.85-u-6)+'" r="3" fill="#dfe6f5"/></g>':'')+
+      '<polygon points="'+(x+w)+','+t+' '+(x+w+d)+','+(t-u)+' '+(x+w+d)+','+(b-u)+' '+(x+w)+','+b+'" fill="'+col+'"/>'+
+      '<polygon points="'+(x+w)+','+t+' '+(x+w+d)+','+(t-u)+' '+(x+w+d)+','+(b-u)+' '+(x+w)+','+b+'" fill="#000" opacity=".3"/>'+
+      '<rect x="'+x+'" y="'+t+'" width="'+w+'" height="'+h+'" fill="'+col+'"/>'+
+      '<polygon points="'+mx+','+(t-rh)+' '+(mx+d)+','+(t-rh-u)+' '+(x+w+d+2)+','+(t-u)+' '+(x+w+2)+','+t+'" fill="'+roof+'"/>'+
+      '<polygon points="'+mx+','+(t-rh)+' '+(mx+d)+','+(t-rh-u)+' '+(x+w+d+2)+','+(t-u)+' '+(x+w+2)+','+t+'" fill="#f4f8ff" opacity=".92"/>'+
+      '<polygon points="'+(x-2)+','+t+' '+mx+','+(t-rh)+' '+(x+w+2)+','+t+'" fill="'+roof+'"/>'+
+      '<polyline points="'+(x-2)+','+t+' '+mx+','+(t-rh)+' '+(x+w+2)+','+t+'" fill="none" stroke="#f4f8ff" stroke-width="2.4" stroke-linejoin="round"/>'+
+      '<rect x="'+(mx-w*0.11)+'" y="'+(b-h*0.5)+'" width="'+(w*0.22)+'" height="'+(h*0.5)+'" fill="#4a2c1c"/>'+
+      win(x+w*0.08,t+h*0.2,w*0.24,h*0.3)+win(x+w*0.68,t+h*0.2,w*0.24,h*0.3)+
+      '<polygon class="win" points="'+(x+w+d*0.25)+','+(t+h*0.22-u*0.25)+' '+(x+w+d*0.7)+','+(t+h*0.22-u*0.7)+' '+(x+w+d*0.7)+','+(t+h*0.55-u*0.7)+' '+(x+w+d*0.25)+','+(t+h*0.55-u*0.25)+'" fill="url(#wg)" opacity=".85"/>'+
+      lights(x-2,t,mx,t-rh,5)+lights(mx,t-rh,x+w+2,t,5)+lights(x+w+2,t,x+w+d+2,t-u,3)+lights(x+2,t+1.5,x+w-2,t+1.5,6);}
+  function church(x,b){var w=34,h=30,t=b-h,mx=x+w/2;
+    return '<rect x="'+x+'" y="'+t+'" width="'+w+'" height="'+h+'" fill="#c9c4bd"/>'+
+      '<polygon points="'+(x-2)+','+t+' '+mx+','+(t-16)+' '+(x+w+2)+','+t+'" fill="#5b3b33"/>'+
+      '<polyline points="'+(x-2)+','+t+' '+mx+','+(t-16)+' '+(x+w+2)+','+t+'" fill="none" stroke="#f4f8ff" stroke-width="2.4"/>'+
+      '<rect x="'+(mx-7)+'" y="'+(t-34)+'" width="14" height="24" fill="#bdb8b0"/>'+
+      '<polygon points="'+(mx-9)+','+(t-34)+' '+mx+','+(t-54)+' '+(mx+9)+','+(t-34)+'" fill="#4d3430"/>'+
+      '<polyline points="'+(mx-9)+','+(t-34)+' '+mx+','+(t-54)+' '+(mx+9)+','+(t-34)+'" fill="none" stroke="#f4f8ff" stroke-width="2"/>'+
+      '<path d="M'+mx+' '+(t-54)+'v-8M'+(mx-3)+' '+(t-59)+'h6" stroke="#f2d060" stroke-width="1.4"/>'+
+      '<path class="win" d="M'+(mx-4)+' '+(t-14)+'v-8a4 4 0 0 1 8 0v8z" fill="url(#wg)"/>'+
+      win(x+4,t+8,7,12)+win(x+w-11,t+8,7,12)+'<rect x="'+(mx-4)+'" y="'+(b-14)+'" width="8" height="14" fill="#4a2c1c"/>';}
+  var o='<svg viewBox="0 0 400 120"><defs>'+
+    '<radialGradient id="wg"><stop offset="0" stop-color="#fff4b8"/><stop offset="1" stop-color="#ffae2e"/></radialGradient>'+
+    '<linearGradient id="gd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#b4c4e4"/></linearGradient></defs>';
+  [[30,12],[85,6],[150,16],[210,8],[280,14],[330,5],[385,20],[60,28],[250,26],[120,3]].forEach(function(s){o+='<circle class="star" cx="'+s[0]+'" cy="'+s[1]+'" r=".9" fill="#fff"/>';});
+  o+='<circle cx="352" cy="20" r="11" fill="#fff7cf"/><circle cx="347" cy="17" r="10" fill="#141f4d"/>';
+  o+='<path d="M0 92Q60 70 130 88T270 84T400 90V120H0z" fill="#3a4a80"/>';
+  o+=tree(16,102,1)+tree(112,100,.8)+tree(236,100,.9)+tree(392,102,1.05);
+  o+=house(28,104,40,26,'#b5533c','#6d2f25',0.4)+church(120,102)+house(186,106,36,24,'#d8b77a','#5d4230',0)+house(262,104,44,28,'#5f7fa8','#34485f',1.6)+house(340,106,34,22,'#c98a5a','#5e3a28',0);
+  o+=tree(84,108,1.15)+tree(174,110,.9)+tree(328,110,1);
+  o+='<path d="M0 104Q50 98 110 106T230 104T340 108T400 104V120H0z" fill="url(#gd)"/></svg>';
+  return o;}
+function decoBox(id){var box=document.createElement('div');box.className='deco';
+  for(var n=0;n<10;n++){var f=document.createElement('i');f.textContent='❄';f.style.left=(n*10+Math.random()*8)+'%';
+    f.style.animationDuration=(3+Math.random()*4)+'s';f.style.animationDelay=(-Math.random()*6)+'s';box.appendChild(f);}
+  document.getElementById(id).appendChild(box);return box;}
+// 上: トナカイのそりのサンタが、村の上空をぐるぐる回って見下ろす(手前で大きく、奥で小さく)
+(function(){var box=decoBox('pl2');
+  var hs=document.createElement('div');hs.className='hs';hs.innerHTML=village();box.appendChild(hs);
+  var sl=document.createElement('div');sl.className='sl';
+  var r=document.createElement('span');r.innerHTML='<span class="p">🦌</span><span class="p" style="animation-delay:-.3s">🦌</span><span class="p" style="position:relative;animation-delay:-.6s">🛷<span style="position:absolute;left:18%;top:-38%;font-size:.75em">🎅</span></span>';sl.appendChild(r);box.appendChild(sl);
+  if(sl.animate){var K=[];for(var d=0;d<=180;d++){var a=d/180*2*Math.PI,sa=Math.sin(a),x=32*Math.cos(a),y=10*sa,
+      z=1.05+0.7*sa,fx=Math.max(-1,Math.min(1,sa*2.5));  // 向きの反転は急に変えず、幅を細くしながら回り込む
+    if(Math.abs(fx)<0.08)fx=fx<0?-0.08:0.08;
+    K.push({transform:'translate3d(-50%,-50%,0) translate3d('+x+'vw,'+y+'vmin,0) scale('+(fx*z)+','+z+')'});}
+    sl.animate(K,{duration:11000,iterations:Infinity,easing:'linear'});
+    // そりからAIマークのプレゼントを落として村に配る(そりは進む向きの後ろ側にある)
+    var lastL=null;
+    setInterval(function(){if(document.body.className!='xmas'||document.hidden)return;
+      var br=box.getBoundingClientRect(),q=sl.getBoundingClientRect();if(!br.height)return;
+      var goingLeft=lastL===null||q.left<lastL;lastL=q.left;
+      var top=q.top+q.height*0.7-br.top,g=document.createElement('div');g.className='gift';g.textContent='Ai';
+      g.style.left=(q.left+q.width*(goingLeft?0.72:0.28)-br.left)+'px';g.style.top=top+'px';box.insertBefore(g,sl);
+      var H=Math.max(10,br.height*0.82-top),R=(Math.random()<0.5?-1:1)*(120+Math.random()*120);
+      // 回りながら落ち、着地でまっすぐになって小さくはね、Aiの文字を見せ、ぴかっと光って消える
+      var a=g.animate([{transform:'translateY(0) rotate('+R+'deg) scale(.6)',opacity:1,easing:'ease-in'},
+        {transform:'translateY('+H+'px) rotate(0deg) scale(1.15)',opacity:1,offset:0.5,easing:'ease-out'},
+        {transform:'translateY('+(H-10)+'px) rotate(0deg) scale(1.15)',opacity:1,offset:0.57,easing:'ease-in'},
+        {transform:'translateY('+H+'px) rotate(0deg) scale(1.15)',opacity:1,offset:0.64},
+        {transform:'translateY('+H+'px) rotate(0deg) scale(1.15)',opacity:1,filter:'brightness(1)',offset:0.84},
+        {transform:'translateY('+H+'px) rotate(0deg) scale(1.5)',opacity:1,filter:'brightness(3) drop-shadow(0 0 3vmin #fff)',offset:0.9},
+        {transform:'translateY('+H+'px) rotate(0deg) scale(1.2)',opacity:1,filter:'brightness(1.3)',offset:0.95},
+        {transform:'translateY('+H+'px) rotate(0deg) scale(1.7)',opacity:0,filter:'brightness(3) drop-shadow(0 0 3vmin #fff)'}],{duration:3600});
+      a.onfinish=function(){g.remove();};},1300);}})();
+// 下: 音符がおどる
+(function(){var box=decoBox('pl1');
+  [['♪','#ffe066'],['🎵',''],['♫','#ffffff'],['🎶',''],['♬','#a8ff9e'],['🎵',''],['♪','#ffb3d9']].forEach(function(n,i){
+    var s=document.createElement('span');s.className='nt';s.textContent=n[0];if(n[1])s.style.color=n[1];
+    NT.push(s);box.appendChild(s);});})();
+document.getElementById('w8').onclick=function(){fetch('/size?w=8')};
+document.getElementById('w10').onclick=function(){fetch('/size?w=10')};
+document.getElementById('w0').onclick=function(){fetch('/size?w=0')};
+// LEDなし: ESP32から届くマス目(1マス16進3文字)を、LED風の丸で描く
+var ES=null;
+function drawFrame(d){var a=d.indexOf(':');if(a<0)return;var n=parseInt(d.slice(0,a),10),h=d.slice(a+1);
+  if(!(n>0)||h.length<n*n*3)return;
+  var cv=document.getElementById('vm'),x=cv.getContext('2d'),u=cv.width/n;
+  x.fillStyle='#000';x.fillRect(0,0,cv.width,cv.height);
+  for(var i=0;i<n*n;i++){var r=parseInt(h[i*3],16),g=parseInt(h[i*3+1],16),b=parseInt(h[i*3+2],16);
+    x.fillStyle=(r|g|b)?'rgb('+r*17+','+g*17+','+b*17+')':'#1c1c1c';
+    x.beginPath();x.arc((i%n+0.5)*u,(Math.floor(i/n)+0.5)*u,u*0.42,0,7);x.fill();}}document.getElementById('go').onclick=function(){fetch('/start')};
+document.getElementById('qt').onclick=function(){fetch('/menu')};
+function poll(){fetch('/s').then(function(r){return r.json()}).then(function(s){
+  S=s;
+  if(s.m==1&&!cdOn){cdOn=true;countdown(s.c);}else if(s.m!=1)cdOn=false;
+  music(s.m==0||s.m==3);  // サイズを選ぶと始まる(オープニング画面では鳴らさない)
+  // 変わったところだけ書き換える(毎回書き換えると画面の再計算でアニメーションがカクつく)
+  function $(id){return document.getElementById(id);}
+  function T(e,v){if(e.textContent!==v)e.textContent=v;}
+  function C(e,v){if(e.className!==v)e.className=v;}
+  function D(e,v){if(e.style.display!==v)e.style.display=v;}
+  C(document.body,(s.m==0||s.m==3||s.m==4)?'xmas':'');
+  // 画面の端にすき間ができても黒く見えないよう、下の欄と同じ色にする
+  var bg=(s.m==0||s.m==3||s.m==4)?'#a3172a':'#7a0e0e';
+  if(document.documentElement.style.backgroundColor!==bg)document.documentElement.style.backgroundColor=bg;
+  T($('msg'),s.msg);
+  T($('sc'),(s.m==0||s.m==4)?'':'あか '+s.s1+' - '+s.s2+' あお');
+  var idle=(s.m==0||s.m==3);
+  D(mn,idle?'grid':'none');
+  if(s.v&&!ES&&window.EventSource){ES=new EventSource('http://'+location.hostname+':81/');ES.onmessage=function(e){drawFrame(e.data);};}
+  D($('vm'),(s.v&&(s.m==1||s.m==2))?'block':'none');
+  D($('sz'),(s.m==4)?'block':'none');
+  C($('w8'),(s.w==8)?'on':'');
+  C($('w10'),(s.w==10)?'on':'');
+  D($('go'),idle?'inline-block':'none');
+  D($('qt'),(idle||s.m==4)?'none':'inline-block');
+  for(var i=0;i<6;i++)C($('g'+i),(i==s.g)?'on':'');
+  for(var p=1;p<=2;p++)for(var b=0;b<3;b++){var e=$('k'+p+b);
+    var t=(p==2&&s.g==3)?s.l[2-b]:s.l[b];T(e,t);C(e,'k'+(b==1?' c':'')+(t==''?' h':''));}
+}).catch(function(){}).then(function(){setTimeout(poll,200)})}
+poll();
+</script></body></html>
