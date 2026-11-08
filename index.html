@@ -103,7 +103,7 @@ body{flex-direction:row}
 // ESP32なし版のゲームエンジン。esp32_game6.ino のゲーム処理をJavaScriptに移したもの。
 // 画面(ページ)はESP32版と同じものを使い、ESP32への通信だけをここで受け止める。
 (function () {
-  var W = 8, NUM = W * W, ECOLS = W - 2, UNITS = 32;
+  var W = 10, NUM = W * W, ECOLS = W - 2, UNITS = 32;
   var MENU = 0, COUNT = 1, PLAY = 2, END = 3;
   var mode = MENU, g = 0, tMode = 0, sc = [0, 0, 0], winner = 0, msg = '', lab = ['', '', ''];
   var px = [];
@@ -132,16 +132,20 @@ body{flex-direction:row}
   function winByScore() { return sc[1] > sc[2] ? 1 : (sc[2] > sc[1] ? 2 : 0); }
 
   // 0 れんだで たいけつ
-  var tpos;
+  var tpos, tugFlash = 0, tugWin = 1;
   var tug = {
-    init: function () { tpos = 16; msg = 'れんだ! れんだ!'; lab = ['', 'ポン!', '']; },
+    init: function () { tpos = 16; tugFlash = 0; msg = 'れんだ! れんだ!'; lab = ['', 'ポン!', '']; },
     input: function (p, b) {
-      if (b !== 1) return;
+      if (b !== 1 || ms() < tugFlash) return;
       if (p === 1) tpos++; else tpos--;
-      if (tpos >= UNITS) endGame(1); else if (tpos <= 0) endGame(2);
+      if (tpos >= UNITS || tpos <= 0) {  // 押し切ったら1点入れて、真ん中から再開
+        tugWin = tpos >= UNITS ? 1 : 2; sc[tugWin]++; tpos = 16; tugFlash = ms() + 700;
+        msg = tugWin === 1 ? 'あかが 1てん!' : 'あおが 1てん!';
+      }
     },
-    tick: function () {},
+    tick: function () { if (tugFlash && ms() >= tugFlash) { tugFlash = 0; msg = 'れんだ! れんだ!'; } },
     render: function () {
+      if (ms() < tugFlash) { if (tugWin === 1) fillAll(255, 0, 0); else fillAll(0, 0, 255); return; }
       var bc = Math.floor(tpos * W / UNITS);
       for (var c = 0; c < W; c++) for (var r = 0; r < W; r++) {
         if (c < bc) setP(c, r, 1); else if (c > bc) setP(c, r, 2); else setPx(c, r, 255, 255, 255);
@@ -151,9 +155,9 @@ body{flex-direction:row}
 
   // 1 ぴったり ストップ
   var sround, sx = [0, 0, 0], sdone = [0, 0, 0], ssub, sw, sStart, sTsub;
-  function dotX(now) { var span = 2 * (W - 1), m = Math.floor((now - sStart) / (150 - sround * 35)) % span; return m < W ? m : span - m; }
+  function dotX(now) { var span = 2 * (W - 1), m = Math.floor((now - sStart) / Math.max(70, 150 - sround * 35)) % span; return m < W ? m : span - m; }
   function stopDist(x) { return x <= W / 2 - 1 ? W / 2 - 1 - x : x - W / 2; }
-  function stopNewRound() { sdone = [0, 0, 0]; ssub = 0; sStart = ms(); sw = 0; msg = 'ラウンド ' + (sround + 1) + ' / 3  まんなかで ストップ!'; }
+  function stopNewRound() { sdone = [0, 0, 0]; ssub = 0; sStart = ms(); sw = 0; msg = 'ラウンド ' + (sround + 1) + '  まんなかで ストップ!'; }
   var stop = {
     init: function () { sround = 0; lab = ['', 'ストップ!', '']; stopNewRound(); },
     input: function (p, b) {
@@ -170,14 +174,14 @@ body{flex-direction:row}
     tick: function () {
       if (ssub === 1 && ms() - sTsub > 1800) {
         sround++;
-        if (sround >= 3) endGame(winByScore()); else stopNewRound();
+        stopNewRound();
       }
     },
     render: function () {
       var now = ms(), c, i;
       for (c = 0; c < W; c++) { setP(c, W - 1, 1, 25); setP(c, 0, 2, 25); }
-      for (i = 0; i < sc[1]; i++) setP(i, W / 2 - 1, 1);
-      for (i = 0; i < sc[2]; i++) setP(i, W / 2, 2);
+      for (i = 0; i < Math.min(sc[1], W); i++) setP(i, W / 2 - 1, 1);
+      for (i = 0; i < Math.min(sc[2], W); i++) setP(i, W / 2, 2);
       setPx(W / 2 - 1, W - 2, 255, 200, 0); setPx(W / 2, W - 2, 255, 200, 0);
       setPx(W / 2 - 1, 1, 255, 200, 0); setPx(W / 2, 1, 255, 200, 0);
       var blink = Math.floor(now / 150) % 2;
@@ -224,18 +228,18 @@ body{flex-direction:row}
         if (qlock[1] && qlock[2]) { qsub = 1; qT = ms(); qwin = 0; msg = 'ざんねん… こたえは ' + lab[qans]; }
       }
     },
-    tick: function () { if (qsub === 1 && ms() - qT > 1800) { qn++; if (qn >= 5) endGame(winByScore()); else quizNew(); } },
+    tick: function () { if (qsub === 1 && ms() - qT > 1800) { qn++; quizNew(); } },
     render: function () {
       var i, r, c;
       if (qtype === 0) fillAll(COLV[qcol][0], COLV[qcol][1], COLV[qcol][2]);
       else if (qtype === 1) { for (i = 0; i < NUM; i++) if (dots[i]) setPx(i % W, Math.floor(i / W), 255, 200, 0); }
-      else { for (r = 0; r < 8; r++) for (c = 0; c < 8; c++) if (SHB[qsh][r] & (0x80 >> c)) setPx(c, r, 255, 80, 160); }
+      else { for (r = 0; r < 8; r++) for (c = 0; c < 8; c++) if (SHB[qsh][r] & (0x80 >> c)) setPx(c + (W - 8) / 2, r + (W - 8) / 2, 255, 80, 160); }
       if (qsub === 1 && Math.floor(ms() / 150) % 2) ring(qwin);
     }
   };
   function moreNew() {
     qsub = 0; qlock = [0, 0, 0]; qwin = 0; qT = ms();
-    var small = rnd(2, 13), big = small + rnd(1, 4), leftBig = rnd(2) === 1;
+    var small = rnd(2, W === 8 ? 13 : 20), big = small + rnd(1, 4), leftBig = rnd(2) === 1;
     var mL = leftBig ? big : small, mR = leftBig ? small : big, n, c, r;
     qans = leftBig ? 0 : 2;
     clearDots();
@@ -254,7 +258,7 @@ body{flex-direction:row}
         if (qlock[1] && qlock[2]) { qsub = 1; qT = ms(); qwin = 0; msg = 'ざんねん…'; }
       }
     },
-    tick: function () { if (qsub === 1 && ms() - qT > 1500) { qn++; if (qn >= 7) endGame(winByScore()); else moreNew(); } },
+    tick: function () { if (qsub === 1 && ms() - qT > 1500) { qn++; moreNew(); } },
     render: function () {
       var blink = Math.floor(ms() / 150) % 2, i, r;
       for (i = 0; i < NUM; i++) if (dots[i]) {
@@ -273,10 +277,10 @@ body{flex-direction:row}
     bdx = rnd(2) ? 1 : -1; bdy = loser === 1 ? 1 : -1;
     rally = 0; tServe = ms() + 900; tBall = tServe;
   }
-  function pongScore(w) { sc[w]++; if (sc[w] >= 3) endGame(w); else pongServe(w === 1 ? 2 : 1); }
+  function pongScore(w) { sc[w]++; pongServe(w === 1 ? 2 : 1); }
   function pongEdge(p, nx) { if (nx === pp[p]) bdx = -1; else if (nx === pp[p] + 2) bdx = 1; }
   var pong = {
-    init: function () { pp = [0, (W - 3) >> 1, (W - 3) >> 1]; lab = ['◀', '', '▶']; msg = 'さきに 3てん!'; pongServe(rnd(1, 3)); },
+    init: function () { pp = [0, (W - 3) >> 1, (W - 3) >> 1]; lab = ['◀', '', '▶']; msg = 'ピンポン!'; pongServe(rnd(1, 3)); },
     input: function (p, b) { if (b === 0 && pp[p] > 0) pp[p]--; else if (b === 2 && pp[p] < W - 3) pp[p]++; },
     tick: function () {
       var now = ms();
@@ -296,28 +300,32 @@ body{flex-direction:row}
     render: function () {
       var i;
       for (i = 0; i < 3; i++) { setP(pp[1] + i, W - 1, 1); setP(pp[2] + i, 0, 2); }
-      for (i = 0; i < sc[1]; i++) setP(0, W - 2 - i, 1, 60);
-      for (i = 0; i < sc[2]; i++) setP(W - 1, 1 + i, 2, 60);
+      for (i = 0; i < Math.min(sc[1], W - 2); i++) setP(0, W - 2 - i, 1, 60);
+      for (i = 0; i < Math.min(sc[2], W - 2); i++) setP(W - 1, 1 + i, 2, 60);
       if (ms() >= tServe || Math.floor(ms() / 120) % 2) setPx(bx, by, 255, 255, 255);
     }
   };
 
   // 5 インベーダー
   var cx = [0, 0, 0], bulX = [0, 0, 0], bulY = [0, -1, -1], ex, ey, edir, killed, alive, tEn, tBul, tShot = [0, 0, 0];
+  function invWave() {  // 新しいインベーダーの群れ(得点はそのまま)
+    bulY = [0, -1, -1]; ex = 1; ey = 0; edir = 1; killed = 0; alive = [];
+    for (var r = 0; r < 3; r++) { alive.push([]); for (var c = 0; c < ECOLS; c++) alive[r].push(true); }
+    tEn = tBul = ms() + 600;
+    msg = 'たくさん たおした ほうが かち!';
+  }
   function invHit(p) {
     if (bulY[p] < 0) return;
     var r = bulY[p] - ey, c = bulX[p] - ex;
     if (r >= 0 && r < 3 && c >= 0 && c < ECOLS && alive[r][c]) {
       alive[r][c] = false; bulY[p] = -1; sc[p]++; killed++;
-      if (killed >= 3 * ECOLS) endGame(winByScore());
+      if (killed >= 3 * ECOLS) invWave();
     }
   }
   var inv = {
     init: function () {
-      cx = [0, W - 3, 2]; bulY = [0, -1, -1]; ex = 1; ey = 0; edir = 1; killed = 0; alive = [];
-      for (var r = 0; r < 3; r++) { alive.push([]); for (var c = 0; c < ECOLS; c++) alive[r].push(true); }
-      tEn = tBul = ms() + 600;
-      lab = ['◀', 'うつ!', '▶']; msg = 'たくさん たおした ほうが かち!';
+      cx = [0, W - 3, 2]; invWave();
+      lab = ['◀', 'うつ!', '▶'];
     },
     input: function (p, b) {
       if (b === 0 && cx[p] > 0) cx[p]--;
@@ -334,7 +342,7 @@ body{flex-direction:row}
       if (now >= tEn) {
         tEn = now + Math.max(160, 650 - killed * 22);
         if ((edir > 0 && ex + ECOLS - 1 >= W - 1) || (edir < 0 && ex <= 0)) { edir = -edir; ey++; } else ex += edir;
-        for (var r = 0; r < 3; r++) for (var c = 0; c < ECOLS; c++) if (alive[r][c] && ey + r >= W - 1) { endGame(winByScore()); msg = 'インベーダーが きた! ' + msg; return; }
+        for (var r = 0; r < 3; r++) for (var c = 0; c < ECOLS; c++) if (alive[r][c] && ey + r >= W - 1) { invWave(); msg = 'インベーダーが きた! つぎの むれ!'; return; }
         invHit(1); invHit(2);
       }
     },
@@ -361,7 +369,7 @@ body{flex-direction:row}
   var CDCOL = [[255, 255, 255], [0, 255, 0], [255, 200, 0], [255, 0, 0]];
   function drawDigit(n) {
     for (var r = 0; r < 6; r++) for (var c = 0; c < 4; c++)
-      if (DIGIT[n][r] & (8 >> c)) setPx(2 + c, 1 + r, CDCOL[n][0], CDCOL[n][1], CDCOL[n][2]);
+      if (DIGIT[n][r] & (8 >> c)) setPx((W - 4) / 2 + c, (W - 6) / 2 + r, CDCOL[n][0], CDCOL[n][1], CDCOL[n][2]);
   }
   function periPx(i, R, G, B) {
     var s = W - 1;
@@ -414,7 +422,8 @@ body{flex-direction:row}
       var n = parseInt(a.n, 10);
       if ((mode === MENU || mode === END) && n >= 0 && n < 6) { g = n; mode = MENU; msg = ''; lab = ['', '', '']; }
     } else if (path === '/menu') {
-      mode = MENU; msg = 'ゲームを えらんでね'; lab = ['', '', ''];
+      if (mode === PLAY) endGame(winByScore());  // やめる: 合計点で勝ち負けを出す
+      else { mode = MENU; msg = ''; lab = ['', '', '']; }
     } else if (path === '/s') {
       return {
         m: mode, c: mode === COUNT ? Math.max(0, 3000 - (ms() - tMode)) : 0, w: W, v: 1, g: g,
