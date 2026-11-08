@@ -59,6 +59,35 @@ body{display:flex;flex-direction:column;position:fixed;left:0;right:0;top:0;bott
 #sz button.on{background:#9fd8ff;border-color:#39c}@keyframes blink{50%{opacity:.3}}
 #go{font-size:13vmin;padding:10px 40px;margin:6px 0;border-radius:24px;border:0;background:#2aa84a;color:#fff;font-weight:bold;animation:blink 1s infinite}
 #qt{font-size:3.5vmin;padding:4px 14px;border-radius:14px;border:1px solid #888;background:#eee}
+#pl2{--ox:1vmin}
+#menu #g5{font-size:5.4vmin}
+/* 横向き: 青を左、赤を右に置き、真ん中にゲームを出す。青は回転させない */
+@media (orientation:landscape){
+body{flex-direction:row}
+.pl{flex:1 1 0;min-width:0;flex-wrap:wrap;align-content:stretch}
+#pl2{transform:none;--ox:.42vmin}
+#pl2 .deco{transform:none}
+#pl1{padding-bottom:6px}
+.xmas #pl1,.xmas #pl2{flex:1 1 0}
+.k{flex:1 1 40%;font-size:6vmin;min-width:0}
+.k.c{order:-1;flex:1 1 100%}
+.k.h{display:none}
+#mid{flex:0 0 54%;overflow:auto;padding:4px;display:flex;flex-direction:column;justify-content:center}
+#go,#qt{align-self:center}
+#menu #g5{font-size:3.7vmin}
+#msg{font-size:5vmin;min-height:0}
+#sc{font-size:5vmin}
+#vm{width:62vmin;height:62vmin;margin:2px auto}
+#menu{grid-template-columns:1fr 1fr 1fr;margin:3px 0}
+#menu button{font-size:4.6vmin;padding:6px 2px}
+#go{font-size:9vmin;padding:2px 30px;margin:2px 0}
+#qt{font-size:4vmin;padding:2px 12px}
+#sz{margin:6px 0}
+#sz button{font-size:7vmin;padding:6px 12px;margin:0 4px}
+.sl{font-size:6vmin}
+.deco span.nt{font-size:8vmin}
+.deco{gap:0}
+}
 </style></head><body>
 <div class="pl" id="pl2"><button class="k" id="k20"></button><button class="k c" id="k21"></button><button class="k" id="k22"></button></div>
 <div id="mid">
@@ -466,7 +495,8 @@ function music(on){if(on&&!mOn){mOn=true;mI=0;mNext=0;if(!mT)mTick();}else if(!o
 function countdown(c){[3,2,1,0].forEach(function(n){var w=c-n*1000;if(w<-300)return;
   setTimeout(function(){if(n==0)beep(1320,0.5);else beep(660,0.15);},Math.max(w,0));});}
 // 青の操作盤は180度回転しているので、左右の命令を入れ替えて、画面上の左右をLEDの左右にそろえる
-function tap(p,b){if(p==2&&S.g>=3&&b!=1)b=2-b;fetch('/t?p='+p+'&b='+b).catch(function(){})}
+function portrait(){return !window.matchMedia('(orientation:landscape)').matches;}
+function tap(p,b){if(p==2&&S.g>=3&&b!=1&&portrait())b=2-b;fetch('/t?p='+p+'&b='+b).catch(function(){})}
 function bind(p,b){var e=document.getElementById('k'+p+b),t=null;
   e.addEventListener('pointerdown',function(ev){ev.preventDefault();tap(p,b);
     if(S.g>=4&&b!=1){clearInterval(t);t=setInterval(function(){tap(p,b)},130);}});
@@ -474,7 +504,7 @@ function bind(p,b){var e=document.getElementById('k'+p+b),t=null;
   e.addEventListener('contextmenu',function(ev){ev.preventDefault()});}
 for(var p=1;p<=2;p++)for(var b=0;b<3;b++)bind(p,b);
 var mn=document.getElementById('menu');
-G.forEach(function(n,i){var x=document.createElement('button');x.textContent=(i+1)+'. '+n;x.id='g'+i;if(i==5)x.style.fontSize='5.4vmin';
+G.forEach(function(n,i){var x=document.createElement('button');x.textContent=(i+1)+'. '+n;x.id='g'+i;
   x.onclick=function(){fetch('/g?n='+i)};mn.appendChild(x)});
 // クリスマスの飾り(スタート画面の上下の余白)
 // 雪の夜の村をSVGで描く
@@ -539,7 +569,7 @@ function decoBox(id){var box=document.createElement('div');box.className='deco';
   if(sl.animate){var K=[];for(var d=0;d<=180;d++){var a=d/180*2*Math.PI,sa=Math.sin(a),x=32*Math.cos(a),y=10*sa,
       z=1.05+0.7*sa,fx=Math.max(-1,Math.min(1,sa*2.5));  // 向きの反転は急に変えず、幅を細くしながら回り込む
     if(Math.abs(fx)<0.08)fx=fx<0?-0.08:0.08;
-    K.push({transform:'translate3d(-50%,-50%,0) translate3d('+x+'vw,'+y+'vmin,0) scale('+(fx*z)+','+z+')'});}
+    K.push({transform:'translate3d(-50%,-50%,0) translate3d(calc('+x+' * var(--ox)),'+y+'vmin,0) scale('+(fx*z)+','+z+')'});}
     sl.animate(K,{duration:11000,iterations:Infinity,easing:'linear'});
     // そりからAIマークのプレゼントを落として村に配る(そりは進む向きの後ろ側にある)
     var lastL=null;
@@ -603,7 +633,7 @@ function poll(){fetch('/s').then(function(r){return r.json()}).then(function(s){
   D($('qt'),(idle||s.m==4)?'none':'inline-block');
   for(var i=0;i<6;i++)C($('g'+i),(i==s.g)?'on':'');
   for(var p=1;p<=2;p++)for(var b=0;b<3;b++){var e=$('k'+p+b);
-    var t=(p==2&&s.g==3)?s.l[2-b]:s.l[b];T(e,t);C(e,'k'+(b==1?' c':'')+(t==''?' h':''));}
+    var t=(p==2&&s.g==3&&portrait())?s.l[2-b]:s.l[b];T(e,t);C(e,'k'+(b==1?' c':'')+(t==''?' h':''));}
 }).catch(function(){}).then(function(){setTimeout(poll,200)})}
 poll();
 </script></body></html>
